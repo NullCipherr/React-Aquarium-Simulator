@@ -1,80 +1,157 @@
-# 🐠 AquaSim - Interactive Aquarium Simulator
+# AquaSim | Simulador de Aquário Interativo
 
-AquaSim is a high-fidelity interactive aquarium simulator built with **React**, **TypeScript**, and **Vite**. It features a dynamic ecosystem with realistic fish behavior, environment management, and advanced water chemistry simulation.
+> Simulação front-end de aquário com foco em comportamento de peixes, equilíbrio químico da água e gestão de ecossistema em tempo real.
 
-![License](https://img.shields.io/github/license/NullCipherr/React-Aquarium-Simulator)
-![React](https://img.shields.io/badge/React-19-blue)
-![Vite](https://img.shields.io/badge/Vite-6-purple)
+![React](https://img.shields.io/badge/React-19.2.0-20232A?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white)
+![Status](https://img.shields.io/badge/status-ativo-1F8B4C)
 
-## 🌟 Features
+## Preview
 
-### 🐟 Advanced Fish Simulation
-- **Dynamic AI Behaviors**: Fish exhibit realistic movement, including swimming, target seeking, and idle states.
-- **Physical Traits**: Individual fish have properties like hunger, health, age, and happiness.
-- **Micro-animations**: Smooth transitions, flipping based on direction, and eating effects.
+> Preview visual em atualização. Use `npm run dev` para visualizar localmente.
 
-### 🌊 Ecosystem & Environment
-- **Water Chemistry**: Monitor and manage pH, ammonia, nitrite, nitrate, oxygen, and CO2 levels.
-- **Cycle Simulation**: Realistic water quality changes over time, requiring maintenance like water changes.
-- **Dual Environments**: Support for both **Freshwater** and **Saltwater** setups with appropriate species.
-- **Biomes & Decoration**: Add plants and rocks to create a unique habitat.
+Sugestão de asset para portfólio:
+- `./.github/preview.gif` (fluxo completo de simulação)
+- `./.github/preview.png` (estado estável do tanque com painéis abertos)
 
-### ⚙️ Interactive Controls
-- **Life Panel**: Add new fish species and feed your population.
-- **Decor Panel**: Customize the tank layout and handle environmental resets.
-- **Water Chemistry**: Fine-tune the temperature and monitor chemical parameters.
-- **System Control**: Save/Load system state and control ecosystem settings like lighting.
+## Visão Geral
 
-## 🛠️ Technology Stack
-- **Frontend**: React 19, TypeScript
-- **Styling**: Vanilla CSS, Tailwind CSS (via CDN)
-- **State Management**: React Hooks (useState, useEffect, useMemo, useCallback)
-- **Storage**: LocalStorage for aquarium persistence
-- **Build Tool**: Vite
-- **Deployment**: GitHub Actions + GitHub Pages
+O **AquaSim** é uma aplicação construída com **React + TypeScript + Vite** para simular a operação de um aquário com múltiplas variáveis interdependentes. O projeto prioriza separação de responsabilidades, atualização contínua do estado da simulação e organização orientada a domínio para facilitar evolução de features.
 
-## 📂 Project Structure
+A base técnica foi estruturada para manter previsibilidade de comportamento, legibilidade de código e manutenção segura em ciclos de expansão funcional.
+
+## Principais Recursos
+
+### Simulação biológica e comportamental
+- Adição de peixes por espécie (água doce e salgada)
+- Simulação de fome, saúde, felicidade, crescimento e reprodução
+- Alimentação manual por clique e por ação em lote
+
+### Qualidade da água e parâmetros técnicos
+- Monitoramento de pH, amônia, nitrito, nitrato, oxigênio, CO2 e temperatura
+- Monitoramento avançado de GH, KH, salinidade, fosfato, nível de água e TDS
+- Sensores com ruído/calibração e tendências históricas de parâmetros
+
+### Ecossistema e operação do tanque
+- Controle de iluminação e evolução de algas
+- Decoração com plantas/rochas e efeito no ecossistema
+- Ajuste técnico de filtração, aeração, CO2, luz e aquecedor
+- Modelo de evaporação com ação de reposição (`top-off`)
+
+### Estado e continuidade
+- Salvamento e carregamento do estado do aquário
+- Persistência local com validação mínima para payload inválido/corrompido
+
+## Arquitetura do Sistema
+
+A arquitetura segue uma abordagem modular para isolar responsabilidades de UI, domínio e infraestrutura local.
+
+- `features`: organização por domínio (`aquarium`, `fish`, `ecosystem`, `controls`), concentrando regras e componentes da feature
+- `hooks`: loop principal de simulação (`useGameLoop`) com atualização contínua e controle de estado temporal
+- `services`: camada de persistência local (`localStorage`) desacoplada da renderização
+- `types` e `constants`: contratos e catálogos compartilhados para reduzir acoplamento e regressões
+
+Decisões de arquitetura aplicadas:
+- Centralização da lógica de simulação no hook principal
+- Separação entre lógica de negócio e componentes visuais
+- Contratos tipados para previsibilidade de evolução
+
+## Performance
+
+Pontos técnicos já aplicados no projeto:
+- Loop de simulação otimizado com `refs`, reduzindo recriações desnecessárias
+- Redução de risco de estado obsoleto em atualizações contínuas
+- Centralização de animações em `src/index.css` (remoção de CSS injetado por componente)
+- Build estático via Vite para entrega enxuta em `dist/`
+
+## Desafios Técnicos
+
+- Manter consistência da simulação com múltiplas variáveis concorrentes em tempo real
+- Equilibrar realismo do domínio com legibilidade e manutenibilidade do código
+- Preservar desacoplamento entre camada visual e regras de atualização de estado
+- Garantir persistência resiliente mesmo com dados locais corrompidos
+
+## Roadmap
+
+Próximas evoluções recomendadas:
+- [ ] Adicionar preview visual versionado no repositório (`.github/preview.gif`)
+- [ ] Expandir suíte de testes para regras críticas do loop de simulação
+- [ ] Definir estratégia de versionamento de estado persistido (`aquariumState`)
+- [ ] Documentar cenários de balanceamento por espécie e ambiente
+
+## Stack Tecnológica
+
+### Core
+- `react` `19.2.0`
+- `react-dom` `19.2.0`
+- `typescript` `~5.8.2`
+- `vite` `^6.2.0`
+
+### Build e tooling
+- `@vitejs/plugin-react`
+- `@types/node`
+- Tailwind CSS via CDN em `index.html`
+
+## Estrutura do Projeto
+
 ```text
 src/
-├── assets/             # Images, videos, and static resources
-├── components/         # Reusable UI components and icons
-├── constants/          # Configuration and static data (fish species, etc.)
-├── features/           # Modular functionality (Aquarium, Fish, Controls)
-├── hooks/              # Custom React hooks (Game Loop, etc.)
-├── services/           # External logic (Storage, API)
-├── types/              # TypeScript definitions and interfaces
-└── App.tsx             # Main application entry
+  components/
+    icons/
+  constants/
+  features/
+    aquarium/
+    controls/
+    ecosystem/
+    fish/
+  hooks/
+  services/
+  types/
+  App.tsx
+  index.tsx
+  index.css
 ```
 
-## 🚀 Getting Started
+## Como Rodar
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (v18 or higher recommended)
-- [npm](https://www.npmjs.com/)
+### Pré-requisitos
+- Node.js 18+
+- npm
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/NullCipherr/React-Aquarium-Simulator.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd React-Aquarium-Simulator
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Running Locally
-To start the development server:
+### Desenvolvimento
 ```bash
+npm install
 npm run dev
 ```
-Open [http://localhost:3000/React-Aquarium-Simulator/](http://localhost:3000/React-Aquarium-Simulator/) in your browser.
 
-## 📦 Deployment
-The project is configured with **GitHub Actions**. Every push to the `main` branch automatically builds and deploys the latest version to **GitHub Pages**.
+### Build de produção
+```bash
+npm run build
+npm run preview
+```
 
-## 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Verificação de tipos
+```bash
+npx tsc --noEmit
+```
+
+## Deploy
+
+Projeto pronto para deploy estático após `npm run build`.
+
+Opções compatíveis:
+- GitHub Pages
+- Netlify
+- Vercel
+- Qualquer hospedagem de arquivos estáticos
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.
+
+---
+
+<div align="center">
+  <p>Desenvolvido por <a href="https://github.com/NullCipherr">Andrei Costa</a></p>
+</div>
