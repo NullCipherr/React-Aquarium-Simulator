@@ -1,19 +1,18 @@
-# AquaSim | Simulador de Aquário Interativo
+<div align="center">
+  <h1>🌌 AquaSim | Simulador de Aquário Interativo</h1>
+  <p><i>Simulação front-end de aquário com foco em comportamento de peixes, equilíbrio químico da água e gestão de ecossistema em tempo real.</i></p>
 
-> Simulação front-end de aquário com foco em comportamento de peixes, equilíbrio químico da água e gestão de ecossistema em tempo real.
-
-![React](https://img.shields.io/badge/React-19.2.0-20232A?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white)
-![Status](https://img.shields.io/badge/status-ativo-1F8B4C)
+  <p>
+    ![React](https://img.shields.io/badge/React-19.2.0-20232A?logo=react)
+    ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
+    ![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white)
+    ![Status](https://img.shields.io/badge/status-ativo-1F8B4C)
+  </p>
+</div>
 
 ## Preview
 
 > Preview visual em atualização. Use `npm run dev` para visualizar localmente.
-
-Sugestão de asset para portfólio:
-- `./.github/preview.gif` (fluxo completo de simulação)
-- `./.github/preview.png` (estado estável do tanque com painéis abertos)
 
 ## Visão Geral
 
