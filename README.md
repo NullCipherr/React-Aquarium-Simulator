@@ -3,10 +3,10 @@
   <p><i>Simulação front-end de aquário com foco em comportamento de peixes, equilíbrio químico da água e gestão de ecossistema em tempo real.</i></p>
 
   <p>
-    ![React](https://img.shields.io/badge/React-19.2.0-20232A?logo=react)
-    ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
-    ![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white)
-    ![Status](https://img.shields.io/badge/status-ativo-1F8B4C)
+    <img src="https://img.shields.io/badge/React-19.2.0-20232A?logo=react" alt="React" />
+    <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white" alt="Vite" />
+    <img src="https://img.shields.io/badge/status-ativo-1F8B4C" alt="Status" />
   </p>
 </div>
 
