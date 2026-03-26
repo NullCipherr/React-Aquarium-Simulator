@@ -9,15 +9,12 @@ interface FishCardProps {
 }
 
 export const FishCard: React.FC<FishCardProps> = ({ species, onClick, isAvailable }) => {
-  const handleClick = () => {
-    if (isAvailable) {
-      onClick(species);
-    }
-  };
-
   return (
-    <div
-      onClick={handleClick}
+    <button
+      type="button"
+      onClick={() => isAvailable && onClick(species)}
+      disabled={!isAvailable}
+      aria-disabled={!isAvailable}
       className={`
         bg-gray-700/50 border border-gray-600 rounded-lg p-4 transition-all duration-200 transform
         ${isAvailable 
@@ -40,6 +37,6 @@ export const FishCard: React.FC<FishCardProps> = ({ species, onClick, isAvailabl
           </div>
         )}
       </div>
-    </div>
+    </button>
   );
 };

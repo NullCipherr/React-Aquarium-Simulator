@@ -12,10 +12,10 @@ interface LifePanelProps {
 export const LifePanel: React.FC<LifePanelProps> = ({ onAddFish, onFeed }) => {
     return (
         <div className="flex flex-col gap-4">
-            <button onClick={onAddFish} className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-blue-500/30">
+            <button type="button" onClick={onAddFish} className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-blue-500/30">
                 <PlusIcon /> Add Fish
             </button>
-            <button onClick={onFeed} className="w-full flex items-center justify-center bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-yellow-500/30">
+            <button type="button" onClick={onFeed} className="w-full flex items-center justify-center bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg transition-all shadow-lg hover:shadow-yellow-500/30">
                 Feed All
             </button>
             <div className="bg-gray-800 p-4 rounded-lg text-sm text-gray-300">

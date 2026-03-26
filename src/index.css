@@ -1,17 +1,12 @@
-/* Main App Styles */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --focus-ring: 0 0 0 2px rgba(56, 189, 248, 0.55);
 }
 
 body {
@@ -24,4 +19,136 @@ body {
 #root {
   width: 100%;
   height: 100vh;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.fish-tail-shape {
+  clip-path: polygon(0% 0%, 80% 15%, 100% 40%, 90% 50%, 100% 60%, 70% 75%, 0% 100%);
+}
+
+@keyframes tail-wag {
+  0% {
+    transform: rotate(20deg) scaleY(1);
+  }
+  25% {
+    transform: rotate(0deg) scaleY(0.9);
+  }
+  50% {
+    transform: rotate(-20deg) scaleY(1);
+  }
+  75% {
+    transform: rotate(0deg) scaleY(0.9);
+  }
+  100% {
+    transform: rotate(20deg) scaleY(1);
+  }
+}
+
+@keyframes fin-flutter {
+  0% {
+    transform: translateY(-50%) rotate(10deg);
+  }
+  50% {
+    transform: translateY(-50%) rotate(-10deg);
+  }
+  100% {
+    transform: translateY(-50%) rotate(10deg);
+  }
+}
+
+@keyframes float-particle {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-100px) translateX(20px);
+    opacity: 0;
+  }
+}
+
+@keyframes rise-bubble {
+  0% {
+    bottom: -20px;
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(10px);
+  }
+  100% {
+    bottom: 110%;
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+}
+
+@keyframes eat-effect {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-eat-effect {
+  animation: eat-effect 0.4s ease-out forwards;
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-modal-enter {
+  animation: modal-enter 0.2s ease-out forwards;
 }

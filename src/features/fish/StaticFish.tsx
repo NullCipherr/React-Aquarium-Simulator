@@ -6,7 +6,7 @@ interface StaticFishProps {
 }
 
 export const StaticFish: React.FC<StaticFishProps> = ({ species }) => {
-  const size = 50; // A fixed size for the preview
+  const size = 50;
   const tailSize = size / 3;
 
   return (
@@ -33,7 +33,7 @@ export const StaticFish: React.FC<StaticFishProps> = ({ species }) => {
               left: `-${tailSize * 0.6}px`, 
               top: `calc(50% - ${tailSize/2}px)`,
             }} 
-            className={`absolute ${species.color} opacity-90 fish-tail origin-right z-5`}
+            className={`absolute ${species.color} fish-tail-shape origin-right opacity-90 z-5`}
         >
         </div>
 
@@ -70,7 +70,6 @@ export const StaticFish: React.FC<StaticFishProps> = ({ species }) => {
         >
             <div className="bg-black rounded-full w-1/2 h-1/2 translate-x-1/4"></div>
         </div>
-      <style>{`.fish-tail { clip-path: polygon(0 0, 100% 50%, 0 100%); }`}</style>
     </div>
   );
 };

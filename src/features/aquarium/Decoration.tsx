@@ -1,7 +1,6 @@
 
 import React from 'react';
-// FIX: Changed import from '../../types' to '../../types/index' to resolve module ambiguity.
-import type { DecorationInstance } from '../../types/index';
+import type { DecorationInstance } from '../../types';
 
 const Rock: React.FC = () => (
     <div className="relative w-full h-full">

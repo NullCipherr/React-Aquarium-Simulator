@@ -1,7 +1,6 @@
 
 import React from 'react';
-// FIX: Changed import from '../../../types' to '../../../types/index' to resolve module ambiguity.
-import type { WaterQuality, EnvironmentType } from '../../../types/index';
+import type { EnvironmentType, WaterQuality } from '../../../types';
 
 interface MeterProps {
   label: string;
@@ -28,12 +27,20 @@ const getMeterColor = (value: number, good: [number, number], warn: [number, num
 
 interface WaterQualityPanelProps {
     waterQuality: WaterQuality;
+    measuredWaterQuality: WaterQuality;
     environment: EnvironmentType;
     onTemperatureChange: (temp: number) => void;
 }
 
-export const WaterQualityPanel: React.FC<WaterQualityPanelProps> = ({ waterQuality, environment, onTemperatureChange }) => {
-    const { ph, ammonia, nitrite, nitrate, temperature, targetTemperature, oxygen, co2 } = waterQuality;
+export const WaterQualityPanel: React.FC<WaterQualityPanelProps> = ({
+    waterQuality,
+    measuredWaterQuality,
+    environment,
+    onTemperatureChange
+}) => {
+    const { ph, ammonia, nitrite, nitrate, temperature, targetTemperature, oxygen, co2, gh, kh, salinity, phosphate } = waterQuality;
+    const measuredTemp = measuredWaterQuality.temperature;
+    const measuredPh = measuredWaterQuality.ph;
 
     const phRanges = environment === 'freshwater' 
         ? { good: [6.8, 7.8] as [number, number], warn: [6.5, 8.1] as [number, number] }
@@ -52,6 +59,7 @@ export const WaterQualityPanel: React.FC<WaterQualityPanelProps> = ({ waterQuali
                 </div>
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                     <span>Target: {targetTemperature}°C</span>
+                    <span>Sensor: {measuredTemp.toFixed(1)}°C</span>
                 </div>
                 <input
                     type="range"
@@ -60,6 +68,7 @@ export const WaterQualityPanel: React.FC<WaterQualityPanelProps> = ({ waterQuali
                     step="1"
                     value={targetTemperature}
                     onChange={(e) => onTemperatureChange(Number(e.target.value))}
+                    aria-label="Temperatura alvo da água"
                     className="w-full h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
             </div>
@@ -72,6 +81,12 @@ export const WaterQualityPanel: React.FC<WaterQualityPanelProps> = ({ waterQuali
                     unit="" 
                     color={getMeterColor(ph, phRanges.good, phRanges.warn)} 
                 />
+                <Meter
+                    label="pH (Sensor)"
+                    value={measuredPh.toFixed(2)}
+                    unit=""
+                    color={getMeterColor(measuredPh, phRanges.good, phRanges.warn)}
+                />
                 <Meter 
                     label="Dissolved O₂" 
                     value={oxygen.toFixed(1)} 
@@ -83,6 +98,30 @@ export const WaterQualityPanel: React.FC<WaterQualityPanelProps> = ({ waterQuali
                     value={co2.toFixed(1)} 
                     unit="" 
                     color={getMeterColor(co2, [5, 25], [25, 35])} 
+                />
+                <Meter
+                    label="GH"
+                    value={gh.toFixed(1)}
+                    unit=" dGH"
+                    color={getMeterColor(gh, [4, 12], [2, 16])}
+                />
+                <Meter
+                    label="KH"
+                    value={kh.toFixed(1)}
+                    unit=" dKH"
+                    color={getMeterColor(kh, [3, 10], [2, 14])}
+                />
+                <Meter
+                    label="Salinity"
+                    value={salinity.toFixed(3)}
+                    unit=" sg"
+                    color={environment === 'saltwater' ? getMeterColor(salinity, [1.023, 1.026], [1.02, 1.028]) : getMeterColor(salinity, [1, 1.002], [0.998, 1.005])}
+                />
+                <Meter
+                    label="Phosphate"
+                    value={phosphate.toFixed(2)}
+                    unit=" ppm"
+                    color={getMeterColor(phosphate, [0, 0.1], [0.1, 0.2])}
                 />
             </div>
 

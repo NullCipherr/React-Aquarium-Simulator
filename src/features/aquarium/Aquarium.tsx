@@ -1,7 +1,13 @@
 
-import React, { forwardRef, useEffect, useRef, useMemo } from 'react';
-// FIX: Changed import from '../../types' to '../../types/index' to resolve module ambiguity.
-import type { FishInstance, FoodParticle, EnvironmentType, DecorationInstance, EcosystemState, EatingEffect as EatingEffectType } from '../../types/index';
+import React, { forwardRef, useEffect, useMemo, useRef } from 'react';
+import type {
+  DecorationInstance,
+  EcosystemState,
+  EatingEffect as EatingEffectType,
+  EnvironmentType,
+  FishInstance,
+  FoodParticle,
+} from '../../types';
 import { Fish } from '../fish/Fish';
 import { Food } from './Food';
 import { Decoration } from './Decoration';
@@ -126,9 +132,9 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
     }
   };
 
-  const backgroundStyle = {
+  const backgroundStyle: React.CSSProperties = {
     background: getBackgroundColor(ecosystem.timeOfDay, environment),
-    transition: 'background 1s linear', // Smooth transition for colors
+    transition: 'background 1s linear',
   };
 
   // Generate Plankton/Dust particles
@@ -167,10 +173,9 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
     <div
       ref={ref}
       style={backgroundStyle}
-      className={`relative w-full h-full overflow-hidden cursor-crosshair`}
+      className="relative h-full w-full cursor-crosshair overflow-hidden"
       onClick={handleClick}
     >
-      {/* 1. SVG Filter Definition for Caustics */}
       <svg className="absolute w-0 h-0">
         <filter id="caustic-filter">
           <feTurbulence 
@@ -184,7 +189,6 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
         </filter>
       </svg>
 
-      {/* 2. Caustics Layer (Light refraction) */}
       <div 
         className="absolute inset-0 pointer-events-none mix-blend-overlay z-0"
         style={{
@@ -196,7 +200,6 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
         }}
       ></div>
 
-      {/* 3. Sunbeams / God Rays */}
       {isDay && ecosystem.lightOn && (
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
             <div className="absolute -top-20 left-1/4 w-32 h-[150%] bg-gradient-to-b from-white/10 to-transparent transform rotate-12 blur-xl"></div>
@@ -205,7 +208,6 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
         </div>
       )}
 
-      {/* 4. Plankton/Dust Particles */}
       <div className="absolute inset-0 pointer-events-none z-0">
         {particles.map(p => (
             <div
@@ -225,7 +227,6 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
         ))}
       </div>
 
-      {/* 5. Freshwater Bubbles */}
       <div className="absolute inset-0 pointer-events-none z-0">
          {bubbles.map(b => (
              <div
@@ -243,7 +244,6 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
          ))}
       </div>
 
-      {/* 6. Algae Overlay (Dynamic) */}
       <div 
         className="absolute inset-0 bg-green-900/40 pointer-events-none z-20"
         style={{ 
@@ -253,16 +253,13 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
         }}
       ></div>
 
-      {/* Surface Overlay (Water Tension from below) */}
        <div className="absolute top-0 left-0 w-full h-12 bg-gradient-to-b from-white/20 to-transparent z-10 opacity-50"></div>
 
 
-      {/* Decorations */}
       {decorations.map(deco => (
         <Decoration key={deco.id} decoration={deco} />
       ))}
       
-      {/* Entities */}
       {foodList.map(food => (
         <Food key={food.id} food={food} />
       ))}
@@ -273,21 +270,8 @@ export const Aquarium = forwardRef<HTMLDivElement, AquariumProps>(({ fishList, f
         <EatingEffect key={effect.id} x={effect.x} y={effect.y} />
       ))}
 
-      {/* Styles for Particle Animation */}
-      <style>{`
-        @keyframes float-particle {
-            0% { transform: translateY(0) translateX(0); opacity: 0; }
-            10% { opacity: 0.8; }
-            90% { opacity: 0.8; }
-            100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
-        }
-        @keyframes rise-bubble {
-            0% { bottom: -20px; transform: translateX(0); opacity: 0; }
-            10% { opacity: 0.6; }
-            50% { transform: translateX(10px); }
-            100% { bottom: 110%; transform: translateX(-10px); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 });
+
+Aquarium.displayName = 'Aquarium';

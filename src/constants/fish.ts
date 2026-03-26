@@ -1,6 +1,5 @@
 
-// FIX: Changed import from '../types' to '../types/index' to resolve module ambiguity.
-import type { FishSpecies } from '../types/index';
+import type { FishSpecies } from '../types';
 
 const freshwaterTolerance = {
   ph: [6.5, 7.8] as [number, number],

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type TabType = 'life' | 'decor' | 'water' | 'system';
+export type TabType = 'life' | 'decor' | 'water' | 'sim' | 'system';
 
 interface RibbonProps {
   activeTab: TabType;
@@ -32,11 +32,19 @@ const SystemIcon = () => (
   </svg>
 );
 
+const SimulatorIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 3v3m4.5-3v3M5 9h14M7 21h10a2 2 0 002-2V9H5v10a2 2 0 002 2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14h4m-4 3h2" />
+  </svg>
+);
+
 export const Ribbon: React.FC<RibbonProps> = ({ activeTab, onTabChange }) => {
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'life', label: 'Life & Feeding', icon: <FishIcon /> },
     { id: 'decor', label: 'Environment', icon: <DecorIcon /> },
     { id: 'water', label: 'Water Quality', icon: <WaterIcon /> },
+    { id: 'sim', label: 'Simulator', icon: <SimulatorIcon /> },
     { id: 'system', label: 'System', icon: <SystemIcon /> },
   ];
 
@@ -46,7 +54,9 @@ export const Ribbon: React.FC<RibbonProps> = ({ activeTab, onTabChange }) => {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => onTabChange(tab.id)}
+            aria-pressed={activeTab === tab.id}
             className={`
               flex items-center gap-2 px-6 py-4 text-sm font-semibold transition-all duration-200 border-b-2 whitespace-nowrap
               ${

@@ -1,7 +1,6 @@
 
 import React from 'react';
-// FIX: Changed import from '../../types' to '../../types/index' to resolve module ambiguity.
-import type { FoodParticle } from '../../types/index';
+import type { FoodParticle } from '../../types';
 
 interface FoodProps {
   food: FoodParticle;

@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { FISH_SPECIES } from '../../constants/index';
-import type { FishSpecies, EnvironmentType } from '../../types/index';
+import { FISH_SPECIES } from '../../constants';
+import type { EnvironmentType, FishSpecies } from '../../types';
 import { FishCard } from './FishCard';
 
 interface AddFishModalProps {
@@ -34,9 +34,16 @@ export const AddFishModal: React.FC<AddFishModalProps> = ({ isOpen, onClose, onA
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 transition-opacity duration-300" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 transition-opacity duration-300"
+      onClick={onClose}
+      role="presentation"
+    >
       <div 
-        className="bg-gray-800/95 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-6 w-full max-w-4xl m-4 transform transition-all duration-300 scale-95 animate-modal-enter" 
+        className="animate-modal-enter m-4 w-full max-w-4xl scale-95 transform rounded-xl border border-gray-700 bg-gray-800/95 p-6 shadow-2xl backdrop-blur-sm transition-all duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Seleção de peixe"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center border-b border-gray-600/50 pb-4 mb-5">
@@ -45,6 +52,7 @@ export const AddFishModal: React.FC<AddFishModalProps> = ({ isOpen, onClose, onA
             <p className="text-sm text-gray-400">Your current tank is: <span className="font-semibold text-blue-400">{environment.charAt(0).toUpperCase() + environment.slice(1)}</span></p>
           </div>
           <button 
+            type="button"
             onClick={onClose} 
             className="text-gray-400 hover:text-white text-3xl bg-gray-700/50 w-10 h-10 rounded-full flex items-center justify-center transition-colors"
             aria-label="Close"
@@ -57,15 +65,6 @@ export const AddFishModal: React.FC<AddFishModalProps> = ({ isOpen, onClose, onA
             {renderSection('Saltwater Species', saltwaterSpecies)}
         </div>
       </div>
-      <style>{`
-        @keyframes modal-enter {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-modal-enter {
-          animation: modal-enter 0.2s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

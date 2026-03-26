@@ -1,7 +1,6 @@
 
 import React from 'react';
-// FIX: Changed import from '../../types' to '../../types/index' to resolve module ambiguity.
-import type { EcosystemState } from '../../types/index';
+import type { EcosystemState } from '../../types';
 
 interface EcosystemPanelProps {
     ecosystem: EcosystemState;
