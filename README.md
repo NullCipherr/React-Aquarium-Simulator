@@ -12,7 +12,7 @@
 
 ## Preview
 
-> Preview visual em atualização. Use `npm run dev` para visualizar localmente.
+![Preview do AquaSim](./.github/preview.png)
 
 ## Visão Geral
 
