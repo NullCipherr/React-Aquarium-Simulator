@@ -11,6 +11,7 @@ import { EcosystemPanel } from './features/ecosystem/EcosystemPanel';
 import { AddFishModal } from './features/fish/AddFishModal';
 import { useGameLoop } from './hooks/useGameLoop';
 import { loadState, saveState } from './services/storage';
+import { FISH_SPECIES } from './constants';
 import type { TabType } from './features/controls/Ribbon';
 import type {
   DecorationInstance,
@@ -72,6 +73,11 @@ const getDefaultSensors = (): SensorState => ({
   readingNoise: 8,
 });
 
+type TimeScale = 0 | 1 | 2 | 4 | 8;
+type WorldTemplateId = 'reproduction_lab' | 'rival_warzone';
+
+const speciesById = new Map(FISH_SPECIES.map((species) => [species.id, species]));
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('life');
   const [fishList, setFishList] = useState<FishInstance[]>([]);
@@ -86,6 +92,7 @@ const App: React.FC = () => {
   const [sensors, setSensors] = useState<SensorState>(getDefaultSensors());
   const [waterHistory, setWaterHistory] = useState<WaterHistoryPoint[]>([]);
   const [ecosystem, setEcosystem] = useState<EcosystemState>(getDefaultEcosystem());
+  const [timeScale, setTimeScale] = useState<TimeScale>(1);
 
   const aquariumRef = useRef<HTMLDivElement>(null);
   const messageTimeoutRef = useRef<number | null>(null);
@@ -146,6 +153,7 @@ const App: React.FC = () => {
     setSensors(getDefaultSensors());
     setWaterHistory([]);
     setEcosystem(getDefaultEcosystem());
+    setTimeScale(1);
   }, []);
 
   const addFish = useCallback(
@@ -170,6 +178,7 @@ const App: React.FC = () => {
         rotation: Math.atan2(dy, dx),
         isStressed: false,
         happiness: 70,
+        breedingCooldown: 0,
       };
 
       setFishList((prev) => [...prev, newFish]);
@@ -265,6 +274,7 @@ const App: React.FC = () => {
     ecosystem,
     setEcosystem,
     environment,
+    timeScale,
     getAquariumDimensions,
   });
 
@@ -294,6 +304,9 @@ const App: React.FC = () => {
   }, [showSystemMessage]);
 
   useEffect(() => {
+    if (timeScale === 0) return;
+
+    const historyIntervalMs = 5000 / timeScale;
     const interval = window.setInterval(() => {
       setWaterHistory((prev) => {
         const snapshot = waterQualitySnapshotRef.current;
@@ -308,22 +321,25 @@ const App: React.FC = () => {
         const next = [...prev, point];
         return next.slice(-120);
       });
-    }, 5000);
+    }, historyIntervalMs);
 
     return () => window.clearInterval(interval);
-  }, []);
+  }, [timeScale]);
 
   useEffect(() => {
+    if (timeScale === 0) return;
+
+    const sensorDriftIntervalMs = 10000 / timeScale;
     const drift = window.setInterval(() => {
       setSensors((prev) => ({
         ...prev,
         calibrationOffsetPh: Math.max(-0.25, Math.min(0.25, prev.calibrationOffsetPh + (Math.random() - 0.5) * 0.01)),
         calibrationOffsetTemp: Math.max(-1.5, Math.min(1.5, prev.calibrationOffsetTemp + (Math.random() - 0.5) * 0.04)),
       }));
-    }, 10000);
+    }, sensorDriftIntervalMs);
 
     return () => window.clearInterval(drift);
-  }, []);
+  }, [timeScale]);
 
   const measuredWaterQuality = useMemo(() => {
     const noiseFactor = sensors.readingNoise / 100;
@@ -355,6 +371,18 @@ const App: React.FC = () => {
     showSystemMessage('Sensores calibrados.');
   }, [showSystemMessage]);
 
+  const handleTimeScaleChange = useCallback(
+    (nextTimeScale: TimeScale) => {
+      setTimeScale(nextTimeScale);
+      showSystemMessage(
+        nextTimeScale === 0
+          ? 'Simulação pausada.'
+          : `Velocidade da simulação ajustada para ${nextTimeScale}x.`,
+      );
+    },
+    [showSystemMessage],
+  );
+
   const handleFeed = useCallback(() => {
     const { width } = getAquariumDimensions();
     const foodAmount = Math.max(1, Math.min(25, Math.ceil(fishList.length / 2)));
@@ -363,6 +391,202 @@ const App: React.FC = () => {
       addFood(Math.random() * width, 20 + Math.random() * 40);
     }
   }, [addFood, fishList.length, getAquariumDimensions]);
+
+  const handleApplyTemplate = useCallback(
+    (templateId: WorldTemplateId) => {
+      const { width, height } = getAquariumDimensions();
+      const safeWidth = Math.max(width, 720);
+      const safeHeight = Math.max(height, 420);
+
+      const buildFish = (
+        speciesId: string,
+        x: number,
+        y: number,
+        overrides?: Partial<FishInstance>,
+      ): FishInstance | null => {
+        const species = speciesById.get(speciesId);
+        if (!species) return null;
+
+        const dx = (Math.random() - 0.5) * species.speed;
+        const dy = (Math.random() - 0.5) * species.speed;
+
+        return {
+          id: createId('fish'),
+          speciesId,
+          x,
+          y,
+          dx,
+          dy,
+          size: species.size,
+          hunger: 50,
+          age: 2,
+          health: 100,
+          target: null,
+          flip: dx < 0,
+          rotation: Math.atan2(dy, dx),
+          isStressed: false,
+          happiness: 70,
+          breedingCooldown: 0,
+          ...overrides,
+        };
+      };
+
+      if (templateId === 'reproduction_lab') {
+        const breederSpeciesId = 'guppy';
+        const breederSpecies = speciesById.get(breederSpeciesId);
+        if (!breederSpecies) return;
+
+        const rows = 2;
+        const cols = 6;
+        const fish: FishInstance[] = [];
+        const startX = safeWidth * 0.2;
+        const startY = safeHeight * 0.35;
+        const xGap = (safeWidth * 0.6) / (cols - 1);
+        const yGap = safeHeight * 0.22;
+
+        for (let row = 0; row < rows; row += 1) {
+          for (let col = 0; col < cols; col += 1) {
+            const candidate = buildFish(
+              breederSpeciesId,
+              startX + col * xGap,
+              startY + row * yGap,
+              {
+                age: 34 + Math.random() * 8,
+                hunger: 9 + Math.random() * 8,
+                health: 98,
+                happiness: 93,
+                size: breederSpecies.maxSize * (0.9 + Math.random() * 0.08),
+                breedingCooldown: 0,
+              },
+            );
+            if (candidate) fish.push(candidate);
+          }
+        }
+
+        setEnvironment('freshwater');
+        setFishList(fish);
+        setFoodList(
+          Array.from({ length: 14 }, (_, i) => ({
+            id: createId(`food_${i}`),
+            x: safeWidth * (0.18 + (i % 7) * 0.1),
+            y: 18 + Math.random() * 32,
+          })),
+        );
+        setDecorations([
+          { id: createId('deco'), type: 'plant', x: safeWidth * 0.2, y: 0, width: 20, height: 120, depth: 0.2 },
+          { id: createId('deco'), type: 'plant', x: safeWidth * 0.48, y: 0, width: 18, height: 130, depth: 0.5 },
+          { id: createId('deco'), type: 'plant', x: safeWidth * 0.77, y: 0, width: 22, height: 115, depth: 0.8 },
+        ]);
+        setWaterQuality({
+          ph: 7.2,
+          ammonia: 0,
+          nitrite: 0,
+          nitrate: 8,
+          temperature: 26,
+          targetTemperature: 26,
+          oxygen: 100,
+          co2: 11,
+          gh: 6,
+          kh: 4,
+          salinity: 1,
+          phosphate: 0.05,
+          waterLevel: 100,
+          tds: 320,
+        });
+        setEquipment({
+          biologicalFiltration: 80,
+          mechanicalFiltration: 72,
+          aeration: 74,
+          co2Injection: 18,
+          lightIntensity: 70,
+          heaterPower: 72,
+        });
+        setSensors(getDefaultSensors());
+        setEcosystem({ timeOfDay: 11, lightOn: true, algaeLevel: 5 });
+        setEatingEffects([]);
+        setWaterHistory([]);
+        setTimeScale(2);
+        showSystemMessage('Template aplicado: Laboratório de Reprodução.');
+        return;
+      }
+
+      if (templateId === 'rival_warzone') {
+        const rivalSpecies: Array<{ id: string; count: number }> = [
+          { id: 'betta', count: 6 },
+          { id: 'guppy', count: 6 },
+          { id: 'oscar', count: 4 },
+          { id: 'corydoras', count: 4 },
+        ];
+
+        const fish: FishInstance[] = [];
+        rivalSpecies.forEach((entry, groupIndex) => {
+          const baseX = safeWidth * (0.18 + groupIndex * 0.22);
+          const baseY = safeHeight * (0.28 + (groupIndex % 2) * 0.22);
+          for (let i = 0; i < entry.count; i += 1) {
+            const candidate = buildFish(
+              entry.id,
+              baseX + (Math.random() - 0.5) * 70,
+              baseY + (Math.random() - 0.5) * 55,
+              {
+                age: 26 + Math.random() * 10,
+                hunger: 28 + Math.random() * 16,
+                health: 96,
+                happiness: 66,
+                breedingCooldown: 600,
+              },
+            );
+            if (candidate) fish.push(candidate);
+          }
+        });
+
+        setEnvironment('freshwater');
+        setFishList(fish);
+        setFoodList(
+          Array.from({ length: 10 }, (_, i) => ({
+            id: createId(`food_${i}`),
+            x: safeWidth * (0.22 + (i % 5) * 0.14),
+            y: 20 + Math.random() * 36,
+          })),
+        );
+        setDecorations([
+          { id: createId('deco'), type: 'rock', x: safeWidth * 0.3, y: 0, width: 78, height: 46, depth: 0.4 },
+          { id: createId('deco'), type: 'rock', x: safeWidth * 0.62, y: 0, width: 86, height: 52, depth: 0.6 },
+          { id: createId('deco'), type: 'plant', x: safeWidth * 0.84, y: 0, width: 18, height: 96, depth: 0.7 },
+        ]);
+        setWaterQuality({
+          ph: 7.1,
+          ammonia: 0.08,
+          nitrite: 0.09,
+          nitrate: 22,
+          temperature: 26.5,
+          targetTemperature: 26.5,
+          oxygen: 97,
+          co2: 12,
+          gh: 7,
+          kh: 5,
+          salinity: 1,
+          phosphate: 0.11,
+          waterLevel: 100,
+          tds: 340,
+        });
+        setEquipment({
+          biologicalFiltration: 62,
+          mechanicalFiltration: 58,
+          aeration: 68,
+          co2Injection: 20,
+          lightIntensity: 62,
+          heaterPower: 70,
+        });
+        setSensors(getDefaultSensors());
+        setEcosystem({ timeOfDay: 15, lightOn: true, algaeLevel: 12 });
+        setEatingEffects([]);
+        setWaterHistory([]);
+        setTimeScale(1);
+        showSystemMessage('Template aplicado: Zona de Guerra (Rivais).');
+      }
+    },
+    [getAquariumDimensions, showSystemMessage],
+  );
 
   const sidePanelContent = useMemo(() => {
     switch (activeTab) {
@@ -395,8 +619,10 @@ const App: React.FC = () => {
             sensors={sensors}
             waterQuality={waterQuality}
             history={waterHistory}
+            timeScale={timeScale}
             onEquipmentChange={setEquipment}
             onSensorChange={setSensors}
+            onTimeScaleChange={handleTimeScaleChange}
             onTopOffWater={handleTopOffWater}
             onCalibrateSensors={handleCalibrateSensors}
           />
@@ -405,7 +631,7 @@ const App: React.FC = () => {
         return (
           <div className="flex flex-col gap-4">
             <EcosystemPanel ecosystem={ecosystem} onToggleLight={handleToggleLight} />
-            <SystemPanel onSave={handleSave} onLoad={handleLoad} />
+            <SystemPanel onSave={handleSave} onLoad={handleLoad} onApplyTemplate={handleApplyTemplate} />
           </div>
         );
       default:
@@ -422,7 +648,9 @@ const App: React.FC = () => {
     handleCalibrateSensors,
     handleFeed,
     handleLoad,
+    handleApplyTemplate,
     handleSave,
+    handleTimeScaleChange,
     handleTopOffWater,
     handleTemperatureChange,
     handleToggleLight,

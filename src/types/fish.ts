@@ -34,4 +34,5 @@ export interface FishInstance {
   isStressed: boolean;
   happiness: number;
   rotation: number;
+  breedingCooldown?: number;
 }

@@ -10,7 +10,7 @@ import type {
   FoodParticle,
   WaterQuality,
 } from '../types';
-import { FISH_SPECIES } from '../constants';
+import { FISH_SPECIES, isRivalSpecies } from '../constants';
 
 interface GameLoopProps {
   fishList: FishInstance[];
@@ -27,19 +27,35 @@ interface GameLoopProps {
   ecosystem: EcosystemState;
   setEcosystem: Dispatch<SetStateAction<EcosystemState>>;
   environment: EnvironmentType;
+  timeScale: number;
   getAquariumDimensions: () => { width: number; height: number };
 }
 
-const GAME_HOUR_DURATION_SECONDS = 15;
+const GAME_HOUR_DURATION_SECONDS = 60;
 const EATING_EFFECT_DURATION = 400;
 const REPRODUCTION_CHANCE = 0.0005;
+const BREEDING_COOLDOWN = 1800;
+const RIVAL_DETECTION_RADIUS = 220;
+const RIVAL_ATTACK_DISTANCE = 34;
+const RIVAL_PREFERRED_DISTANCE = 52;
+const RIVAL_ATTACK_CHANCE = 0.035;
+const RIVAL_ATTACK_DAMAGE = 0.4;
 
 const speciesById = new Map(FISH_SPECIES.map((species) => [species.id, species]));
 
-const getDistance = (x1: number, y1: number, x2: number, y2: number) =>
-  Math.hypot(x1 - x2, y1 - y2);
+const getDistanceSquared = (x1: number, y1: number, x2: number, y2: number) => {
+  const dx = x1 - x2;
+  const dy = y1 - y2;
+  return dx * dx + dy * dy;
+};
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const normalizeAngle = (angle: number) => {
+  let normalized = angle;
+  while (normalized > Math.PI) normalized -= Math.PI * 2;
+  while (normalized < -Math.PI) normalized += Math.PI * 2;
+  return normalized;
+};
 
 const randomId = (prefix: string) => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -63,10 +79,21 @@ export const useGameLoop = ({
   ecosystem,
   setEcosystem,
   environment,
+  timeScale,
   getAquariumDimensions,
 }: GameLoopProps) => {
+  const TARGET_REACHED_DISTANCE_SQ = 18 * 18;
+  const FOOD_EAT_DISTANCE_SCALE_SQ = 0.8 * 0.8;
+  const PARTNER_DISTANCE_SQ = 50 * 50;
+  const RIVAL_DETECTION_RADIUS_SQ = RIVAL_DETECTION_RADIUS * RIVAL_DETECTION_RADIUS;
+  const RIVAL_ATTACK_DISTANCE_SQ = RIVAL_ATTACK_DISTANCE * RIVAL_ATTACK_DISTANCE;
+  const RIVAL_PREFERRED_DISTANCE_SQ = RIVAL_PREFERRED_DISTANCE * RIVAL_PREFERRED_DISTANCE;
+
   const animationFrameId = useRef<number | null>(null);
   const lastTime = useRef<number>(performance.now());
+  const fishMotionStateRef = useRef(
+    new Map<string, { retargetCooldown: number; disengageCooldown: number }>(),
+  );
 
   const fishListRef = useRef(fishList);
   const foodListRef = useRef(foodList);
@@ -117,7 +144,7 @@ export const useGameLoop = ({
   const gameLoop = useCallback(() => {
     const now = performance.now();
     const rawDelta = (now - lastTime.current) / 16.67;
-    const delta = Math.min(rawDelta, 4);
+    const delta = Math.min(rawDelta, 4) * timeScale;
     lastTime.current = now;
 
     const { width, height } = getAquariumDimensionsRef.current();
@@ -265,6 +292,7 @@ export const useGameLoop = ({
     });
 
     const eatenFoodIds = new Set<string>();
+    const breedingLockIds = new Set<string>();
     const newEatingEffects: { x: number; y: number }[] = [];
     const newBornFish: FishInstance[] = [];
 
@@ -273,10 +301,29 @@ export const useGameLoop = ({
         const species = speciesById.get(fish.speciesId);
         if (!species) return fish;
 
-        let { x, y, dx, dy, hunger, age, size, flip, health, happiness, target, rotation } = fish;
+        let {
+          x,
+          y,
+          dx,
+          dy,
+          hunger,
+          age,
+          size,
+          flip,
+          health,
+          happiness,
+          target,
+          rotation,
+          breedingCooldown = 0,
+        } = fish;
+
+        if (breedingLockIds.has(fish.id)) {
+          breedingCooldown = BREEDING_COOLDOWN;
+        }
 
         hunger += 0.02 * delta;
         age += 0.001 * delta;
+        breedingCooldown = Math.max(0, breedingCooldown - delta);
 
         const tolerance = species.waterQualityTolerance;
         let isStressed = false;
@@ -330,6 +377,68 @@ export const useGameLoop = ({
           size += 0.02 * delta;
         }
 
+        const fishMotionState =
+          fishMotionStateRef.current.get(fish.id) ?? { retargetCooldown: 0, disengageCooldown: 0 };
+        fishMotionState.retargetCooldown = Math.max(0, fishMotionState.retargetCooldown - delta);
+        fishMotionState.disengageCooldown = Math.max(0, fishMotionState.disengageCooldown - delta);
+
+        let closestRival: FishInstance | null = null;
+        let rivalDistanceSq = Infinity;
+        for (const candidate of currentFishList) {
+          if (candidate.id === fish.id) continue;
+          if (!isRivalSpecies(fish.speciesId, candidate.speciesId)) continue;
+          const distanceSq = getDistanceSquared(x, y, candidate.x, candidate.y);
+          if (distanceSq < rivalDistanceSq) {
+            rivalDistanceSq = distanceSq;
+            closestRival = candidate;
+          }
+        }
+
+        if (closestRival && rivalDistanceSq < RIVAL_DETECTION_RADIUS_SQ) {
+          if (
+            rivalDistanceSq > RIVAL_PREFERRED_DISTANCE_SQ &&
+            fishMotionState.disengageCooldown <= 0 &&
+            (!target || (hunger < 25 && fishMotionState.retargetCooldown <= 0))
+          ) {
+            target = { x: closestRival.x, y: closestRival.y };
+            fishMotionState.retargetCooldown = 8;
+          } else if (rivalDistanceSq <= RIVAL_PREFERRED_DISTANCE_SQ) {
+            // Evita lock "boca a boca": ao chegar perto, desengaja e reposiciona.
+            const separationAngle = Math.atan2(y - closestRival.y, x - closestRival.x);
+            dx += Math.cos(separationAngle) * 0.08 * delta;
+            dy += Math.sin(separationAngle) * 0.08 * delta;
+
+            if (
+              target &&
+              getDistanceSquared(target.x, target.y, closestRival.x, closestRival.y) < 35 * 35
+            ) {
+              target = null;
+            }
+            fishMotionState.disengageCooldown = 12;
+          }
+
+          isStressed = true;
+        }
+
+        if (
+          closestRival &&
+          rivalDistanceSq < RIVAL_ATTACK_DISTANCE_SQ &&
+          Math.random() < Math.min(0.35, RIVAL_ATTACK_CHANCE * Math.max(1, delta * 0.5))
+        ) {
+          const combatDelta = Math.min(delta, 2);
+          health -= RIVAL_ATTACK_DAMAGE * combatDelta;
+          happiness = Math.max(0, happiness - 0.4 * combatDelta);
+          hunger = Math.min(160, hunger + 0.08 * combatDelta);
+          isStressed = true;
+        }
+
+        if (hunger > 100) {
+          const starvationDelta = hunger - 100;
+          health -= starvationDelta * 0.012 * delta;
+          happiness = Math.max(0, happiness - starvationDelta * 0.01 * delta);
+          isStressed = true;
+        }
+
         const maxSpeed = species.speed * (isStressed ? 1.5 : 1);
 
         let hasValidTarget = target !== null;
@@ -337,10 +446,11 @@ export const useGameLoop = ({
         let targetY = target?.y ?? 0;
 
         if (hasValidTarget) {
-          const distToTarget = getDistance(x, y, targetX, targetY);
-          if (distToTarget < 20) {
+          const distToTargetSq = getDistanceSquared(x, y, targetX, targetY);
+          if (distToTargetSq < TARGET_REACHED_DISTANCE_SQ) {
             hasValidTarget = false;
             target = null;
+            fishMotionState.retargetCooldown = Math.max(fishMotionState.retargetCooldown, 6);
           }
         }
 
@@ -353,17 +463,18 @@ export const useGameLoop = ({
         const minTargetY = swimPaddingY;
         const maxTargetY = Math.max(minTargetY, height - swimPaddingY);
 
-        if (!hasValidTarget) {
+        if (!hasValidTarget && fishMotionState.retargetCooldown <= 0) {
           if (hunger > 30) {
             let closestFood: FoodParticle | null = null;
-            let minDist = Infinity;
+            let minDistSq = Infinity;
             const foodDetectionRadius = Math.max(180, Math.min(width, height) * 0.45);
+            const foodDetectionRadiusSq = foodDetectionRadius * foodDetectionRadius;
 
             currentFoodList.forEach((food) => {
               if (eatenFoodIds.has(food.id)) return;
-              const distance = getDistance(x, y, food.x, food.y);
-              if (distance < foodDetectionRadius && distance < minDist) {
-                minDist = distance;
+              const distanceSq = getDistanceSquared(x, y, food.x, food.y);
+              if (distanceSq < foodDetectionRadiusSq && distanceSq < minDistSq) {
+                minDistSq = distanceSq;
                 closestFood = food;
               }
             });
@@ -373,6 +484,7 @@ export const useGameLoop = ({
               targetX = closestFood.x;
               targetY = closestFood.y;
               hasValidTarget = true;
+              fishMotionState.retargetCooldown = 10;
             }
           }
 
@@ -383,14 +495,15 @@ export const useGameLoop = ({
             };
             targetX = target.x;
             targetY = target.y;
+            fishMotionState.retargetCooldown = 30;
           }
         }
 
         if (hunger > 30) {
           currentFoodList.forEach((food) => {
             if (eatenFoodIds.has(food.id)) return;
-            const distance = getDistance(x, y, food.x, food.y);
-            if (distance < size * 0.8) {
+            const distanceSq = getDistanceSquared(x, y, food.x, food.y);
+            if (distanceSq < size * size * FOOD_EAT_DISTANCE_SCALE_SQ) {
               hunger = Math.max(0, hunger - 40);
               eatenFoodIds.add(food.id);
               newEatingEffects.push({ x: food.x, y: food.y });
@@ -401,13 +514,27 @@ export const useGameLoop = ({
           });
         }
 
-        const angle = Math.atan2(targetY - y, targetX - x);
-        const desiredDx = Math.cos(angle) * maxSpeed;
-        const desiredDy = Math.sin(angle) * maxSpeed;
-        const turnFactor = 0.05;
+        const activeTarget = target;
+        if (activeTarget) {
+          targetX = activeTarget.x;
+          targetY = activeTarget.y;
+          const angle = Math.atan2(targetY - y, targetX - x);
+          const targetDistance = Math.sqrt(getDistanceSquared(x, y, targetX, targetY));
+          const desiredSpeed = Math.max(0.15, Math.min(maxSpeed, (targetDistance / 75) * maxSpeed));
+          const desiredDx = Math.cos(angle) * desiredSpeed;
+          const desiredDy = Math.sin(angle) * desiredSpeed;
+          const steering = Math.min(0.25, 0.05 * delta);
 
-        dx += (desiredDx - dx) * turnFactor * delta;
-        dy += (desiredDy - dy) * turnFactor * delta;
+          dx += (desiredDx - dx) * steering;
+          dy += (desiredDy - dy) * steering;
+        } else {
+          // Sem alvo: mantém inércia suave para evitar tremor de direção.
+          if (Math.abs(dx) < 0.05) dx += (Math.random() - 0.5) * 0.02;
+          if (Math.abs(dy) < 0.05) dy += (Math.random() - 0.5) * 0.02;
+        }
+
+        dx *= 0.996;
+        dy *= 0.996;
 
         const velocity = Math.hypot(dx, dy);
         if (velocity > maxSpeed) {
@@ -466,12 +593,15 @@ export const useGameLoop = ({
         const speed = Math.hypot(dx, dy);
         if (speed > 0.1 && !didBounce) {
           const targetRotation = Math.atan2(dy, dx);
-          let rotationDiff = targetRotation - rotation;
+          const rotationDiff = normalizeAngle(targetRotation - rotation);
+          const deadZone = 0.025;
+          const maxTurnPerFrame = 0.07 * Math.min(delta, 2); // limita giro brusco
 
-          while (rotationDiff > Math.PI) rotationDiff -= Math.PI * 2;
-          while (rotationDiff < -Math.PI) rotationDiff += Math.PI * 2;
-
-          rotation += rotationDiff * 0.1 * delta;
+          if (Math.abs(rotationDiff) > deadZone) {
+            const smoothedTurn = rotationDiff * 0.12;
+            const appliedTurn = clamp(smoothedTurn, -maxTurnPerFrame, maxTurnPerFrame);
+            rotation = normalizeAngle(rotation + appliedTurn);
+          }
         }
 
         if (
@@ -479,18 +609,24 @@ export const useGameLoop = ({
           hunger < 20 &&
           health > 95 &&
           happiness > 85 &&
+          breedingCooldown <= 0 &&
           size >= species.maxSize * 0.85 &&
           currentFishList.length < 40 &&
           Math.random() < REPRODUCTION_CHANCE * delta
         ) {
-          const hasPartner = currentFishList.some(
+          const partner = currentFishList.find(
             (candidate) =>
               candidate.id !== fish.id &&
+              !breedingLockIds.has(candidate.id) &&
               candidate.speciesId === fish.speciesId &&
-              getDistance(x, y, candidate.x, candidate.y) < 50,
+              (candidate.breedingCooldown ?? 0) <= 0 &&
+              getDistanceSquared(x, y, candidate.x, candidate.y) < PARTNER_DISTANCE_SQ,
           );
 
-          if (hasPartner) {
+          if (partner) {
+            breedingLockIds.add(fish.id);
+            breedingLockIds.add(partner.id);
+
             const babyDx = Math.random() - 0.5;
             const babyDy = Math.random() - 0.5;
 
@@ -510,10 +646,14 @@ export const useGameLoop = ({
               rotation: Math.atan2(babyDy, babyDx),
               isStressed: false,
               happiness: 70,
+              breedingCooldown: BREEDING_COOLDOWN * 0.35,
             });
             hunger = 60;
+            breedingCooldown = BREEDING_COOLDOWN;
           }
         }
+
+        fishMotionStateRef.current.set(fish.id, fishMotionState);
 
         return {
           ...fish,
@@ -530,9 +670,10 @@ export const useGameLoop = ({
           health,
           isStressed,
           happiness,
+          breedingCooldown,
         };
       })
-      .filter((fish) => fish.hunger < 120 && fish.health > 0);
+      .filter((fish) => fish.health > 0);
 
     const updatedFoodList = currentFoodList
       .map((food) => ({ ...food, y: food.y + 0.5 * delta }))
@@ -546,6 +687,13 @@ export const useGameLoop = ({
       newBornFish.length > 0
         ? [...updatedFishList.filter((fish) => fish.health > 0), ...newBornFish]
         : updatedFishList;
+
+    const activeFishIds = new Set(nextFishList.map((fish) => fish.id));
+    fishMotionStateRef.current.forEach((_, fishId) => {
+      if (!activeFishIds.has(fishId)) {
+        fishMotionStateRef.current.delete(fishId);
+      }
+    });
 
     const nextEatingEffects: EatingEffect[] = [
       ...updatedEatingEffects,
@@ -578,9 +726,19 @@ export const useGameLoop = ({
     setFishList,
     setFoodList,
     setWaterQuality,
+    timeScale,
   ]);
 
   useEffect(() => {
+    if (timeScale === 0) {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+      animationFrameId.current = null;
+      lastTime.current = performance.now();
+      return;
+    }
+
     lastTime.current = performance.now();
     animationFrameId.current = requestAnimationFrame(gameLoop);
 
@@ -589,5 +747,5 @@ export const useGameLoop = ({
         cancelAnimationFrame(animationFrameId.current);
       }
     };
-  }, [gameLoop]);
+  }, [gameLoop, timeScale]);
 };

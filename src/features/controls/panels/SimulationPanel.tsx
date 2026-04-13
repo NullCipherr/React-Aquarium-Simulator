@@ -1,6 +1,8 @@
 import React from 'react';
 import type { EquipmentState, SensorState, WaterHistoryPoint, WaterQuality } from '../../../types';
 
+type TimeScale = 0 | 1 | 2 | 4 | 8;
+
 interface SliderControlProps {
   label: string;
   value: number;
@@ -33,8 +35,10 @@ interface SimulationPanelProps {
   sensors: SensorState;
   waterQuality: WaterQuality;
   history: WaterHistoryPoint[];
+  timeScale: TimeScale;
   onEquipmentChange: (equipment: EquipmentState) => void;
   onSensorChange: (sensors: SensorState) => void;
+  onTimeScaleChange: (timeScale: TimeScale) => void;
   onTopOffWater: () => void;
   onCalibrateSensors: () => void;
 }
@@ -44,11 +48,21 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
   sensors,
   waterQuality,
   history,
+  timeScale,
   onEquipmentChange,
   onSensorChange,
+  onTimeScaleChange,
   onTopOffWater,
   onCalibrateSensors,
 }) => {
+  const speedControls: ReadonlyArray<{ label: string; value: TimeScale }> = [
+    { label: 'Pause', value: 0 },
+    { label: 'Play', value: 1 },
+    { label: '2x', value: 2 },
+    { label: '4x', value: 4 },
+    { label: '8x', value: 8 },
+  ];
+
   const latest = history[history.length - 1];
   const previous = history[history.length - 6] ?? latest;
 
@@ -57,6 +71,32 @@ export const SimulationPanel: React.FC<SimulationPanelProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
+      <section className="rounded-lg border border-gray-700/50 bg-gray-700/20 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase text-gray-400">Tempo da simulação</h3>
+          <span className="rounded bg-gray-800 px-2 py-1 text-[11px] font-semibold text-cyan-300">
+            {timeScale === 0 ? 'Pausado' : `${timeScale}x`}
+          </span>
+        </div>
+        <div className="grid grid-cols-5 gap-2">
+          {speedControls.map((control) => (
+            <button
+              key={control.label}
+              type="button"
+              onClick={() => onTimeScaleChange(control.value)}
+              aria-pressed={timeScale === control.value}
+              className={`rounded-md px-2 py-2 text-xs font-semibold transition-colors ${
+                timeScale === control.value
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              {control.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="rounded-lg border border-gray-700/50 bg-gray-700/20 p-3">
         <h3 className="mb-2 text-xs font-bold uppercase text-gray-400">Equipamentos</h3>
         <div className="flex flex-col gap-2">

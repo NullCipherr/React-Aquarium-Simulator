@@ -1,9 +1,8 @@
-
 import type {
   DecorationInstance,
-  EquipmentState,
   EcosystemState,
   EnvironmentType,
+  EquipmentState,
   FishInstance,
   FoodParticle,
   SensorState,
@@ -11,27 +10,44 @@ import type {
 } from '../types';
 
 interface AppState {
-    fishList: FishInstance[];
-    foodList: FoodParticle[];
-    environment: EnvironmentType;
-    decorations: DecorationInstance[];
-    waterQuality: WaterQuality;
-    ecosystem: EcosystemState;
-    equipment?: EquipmentState;
-    sensors?: SensorState;
+  fishList: FishInstance[];
+  foodList: FoodParticle[];
+  environment: EnvironmentType;
+  decorations: DecorationInstance[];
+  waterQuality: WaterQuality;
+  ecosystem: EcosystemState;
+  equipment?: EquipmentState;
+  sensors?: SensorState;
 }
 
-export const saveState = (state: AppState) => {
-    try {
-        const stateString = JSON.stringify(state);
-        localStorage.setItem('aquariumState', stateString);
-    } catch (error) {
-        console.error("Failed to save state:", error);
-    }
-};
+interface PersistedEnvelope {
+  version: number;
+  savedAt: string;
+  data: AppState;
+}
+
+const STORAGE_KEY = 'aquariumState';
+const STORAGE_VERSION = 2;
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+const getDefaultWaterQuality = (environment: EnvironmentType): WaterQuality => ({
+  ph: environment === 'freshwater' ? 7.2 : 8.2,
+  ammonia: 0,
+  nitrite: 0,
+  nitrate: 5,
+  temperature: environment === 'freshwater' ? 25 : 27,
+  targetTemperature: environment === 'freshwater' ? 25 : 27,
+  oxygen: 100,
+  co2: 10,
+  gh: environment === 'freshwater' ? 6 : 8,
+  kh: environment === 'freshwater' ? 4 : 9,
+  salinity: environment === 'saltwater' ? 1.024 : 1,
+  phosphate: 0.04,
+  waterLevel: 100,
+  tds: environment === 'freshwater' ? 320 : 540,
+});
 
 const isWaterQuality = (value: unknown): value is WaterQuality => {
   if (!isObject(value)) return false;
@@ -83,57 +99,82 @@ const isSensorState = (value: unknown): value is SensorState => {
   );
 };
 
-export const loadState = (): AppState | null => {
-    try {
-        const savedState = localStorage.getItem('aquariumState');
-        if (savedState === null) {
-            return null;
-        }
+const normalizeState = (candidate: unknown): AppState | null => {
+  if (!isObject(candidate)) return null;
 
-        const parsed: unknown = JSON.parse(savedState);
-        if (!isObject(parsed)) return null;
+  const environmentCandidate = candidate.environment;
+  const environment: EnvironmentType =
+    environmentCandidate === 'saltwater' ? 'saltwater' : 'freshwater';
 
-        const environmentCandidate = parsed.environment;
-        const environment: EnvironmentType =
-          environmentCandidate === 'saltwater' ? 'saltwater' : 'freshwater';
+  return {
+    fishList: Array.isArray(candidate.fishList)
+      ? (candidate.fishList as FishInstance[])
+      : [],
+    foodList: Array.isArray(candidate.foodList)
+      ? (candidate.foodList as FoodParticle[])
+      : [],
+    environment,
+    decorations: Array.isArray(candidate.decorations)
+      ? (candidate.decorations as DecorationInstance[])
+      : [],
+    waterQuality: isWaterQuality(candidate.waterQuality)
+      ? candidate.waterQuality
+      : getDefaultWaterQuality(environment),
+    ecosystem: isEcosystemState(candidate.ecosystem)
+      ? candidate.ecosystem
+      : { timeOfDay: 8, lightOn: true, algaeLevel: 0 },
+    equipment: isEquipmentState(candidate.equipment)
+      ? candidate.equipment
+      : undefined,
+    sensors: isSensorState(candidate.sensors)
+      ? candidate.sensors
+      : undefined,
+  };
+};
 
-        return {
-          fishList: Array.isArray(parsed.fishList) ? (parsed.fishList as FishInstance[]) : [],
-          foodList: Array.isArray(parsed.foodList) ? (parsed.foodList as FoodParticle[]) : [],
-          environment,
-          decorations: Array.isArray(parsed.decorations)
-            ? (parsed.decorations as DecorationInstance[])
-            : [],
-          waterQuality: isWaterQuality(parsed.waterQuality)
-            ? parsed.waterQuality
-            : {
-                ph: environment === 'freshwater' ? 7.2 : 8.2,
-                ammonia: 0,
-                nitrite: 0,
-                nitrate: 5,
-                temperature: environment === 'freshwater' ? 25 : 27,
-                targetTemperature: environment === 'freshwater' ? 25 : 27,
-                oxygen: 100,
-                co2: 10,
-                gh: environment === 'freshwater' ? 6 : 8,
-                kh: environment === 'freshwater' ? 4 : 9,
-                salinity: environment === 'saltwater' ? 1.024 : 1,
-                phosphate: 0.04,
-                waterLevel: 100,
-                tds: environment === 'freshwater' ? 320 : 540,
-              },
-          ecosystem: isEcosystemState(parsed.ecosystem)
-            ? parsed.ecosystem
-            : { timeOfDay: 8, lightOn: true, algaeLevel: 0 },
-          equipment: isEquipmentState(parsed.equipment)
-            ? parsed.equipment
-            : undefined,
-          sensors: isSensorState(parsed.sensors)
-            ? parsed.sensors
-            : undefined,
-        };
-    } catch (error) {
-        console.error("Failed to load state:", error);
-        return null;
+const parsePersistedData = (payload: unknown): AppState | null => {
+  if (!isObject(payload)) return null;
+
+  const maybeVersion = payload.version;
+  const maybeData = payload.data;
+
+  if (typeof maybeVersion === 'number' && isObject(maybeData)) {
+    if (maybeVersion > STORAGE_VERSION) {
+      console.warn(
+        `[storage] Versão de estado (${maybeVersion}) acima da suportada (${STORAGE_VERSION}). Tentando leitura compatível.`,
+      );
     }
+
+    return normalizeState(maybeData);
+  }
+
+  // Compatibilidade com formato legado (estado salvo sem envelope/versionamento).
+  return normalizeState(payload);
+};
+
+export const saveState = (state: AppState) => {
+  try {
+    const payload: PersistedEnvelope = {
+      version: STORAGE_VERSION,
+      savedAt: new Date().toISOString(),
+      data: state,
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.error('Failed to save state:', error);
+  }
+};
+
+export const loadState = (): AppState | null => {
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState === null) return null;
+
+    const parsed: unknown = JSON.parse(savedState);
+    return parsePersistedData(parsed);
+  } catch (error) {
+    console.error('Failed to load state:', error);
+    return null;
+  }
 };

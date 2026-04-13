@@ -40,7 +40,7 @@ A base técnica foi estruturada para manter previsibilidade de comportamento, le
 
 ### Estado e continuidade
 - Salvamento e carregamento do estado do aquário
-- Persistência local com validação mínima para payload inválido/corrompido
+- Persistência local versionada (`aquariumState`) com compatibilidade para formato legado
 
 ## Arquitetura do Sistema
 
@@ -55,6 +55,16 @@ Decisões de arquitetura aplicadas:
 - Centralização da lógica de simulação no hook principal
 - Separação entre lógica de negócio e componentes visuais
 - Contratos tipados para previsibilidade de evolução
+- Envelope de persistência com versão para suportar migrações sem quebrar saves antigos
+
+## Documentação Técnica
+
+A documentação detalhada do projeto está organizada em [`/docs`](./docs):
+
+- [`docs/README.md`](./docs/README.md): índice e guia de navegação
+- [`docs/arquitetura.md`](./docs/arquitetura.md): responsabilidades por camada e fluxo de dados
+- [`docs/simulacao.md`](./docs/simulacao.md): regras do loop, água, comportamento e interações
+- [`docs/persistencia.md`](./docs/persistencia.md): schema versionado, compatibilidade e evolução
 
 ## Performance
 
@@ -71,13 +81,31 @@ Pontos técnicos já aplicados no projeto:
 - Preservar desacoplamento entre camada visual e regras de atualização de estado
 - Garantir persistência resiliente mesmo com dados locais corrompidos
 
+## Cenários de Balanceamento
+
+Parâmetros base aplicados por ambiente para manter coerência do comportamento das espécies:
+
+| Ambiente | Faixa de pH | Temperatura (°C) | Amônia máx. | Nitrito máx. | Nitrato máx. |
+| --- | --- | --- | --- | --- | --- |
+| `freshwater` | `6.5 - 7.8` | `22 - 28` | `0.25` | `0.5` | `50` |
+| `saltwater` | `7.8 - 8.4` | `24 - 29` | `0.1` | `0.2` | `30` |
+
+Referência de implementação: `src/constants/fish.ts`.
+
 ## Roadmap
 
-Próximas evoluções recomendadas:
-- [ ] Adicionar preview visual versionado no repositório (`.github/preview.gif`)
-- [ ] Expandir suíte de testes para regras críticas do loop de simulação
-- [ ] Definir estratégia de versionamento de estado persistido (`aquariumState`)
-- [ ] Documentar cenários de balanceamento por espécie e ambiente
+Implementado nesta etapa:
+- [x] Preview versionado no repositório (`.github/preview.png`)
+- [x] Versionamento de persistência com envelope (`version`, `savedAt`, `data`)
+- [x] Compatibilidade com formato legado de save (sem versionamento)
+- [x] Suíte inicial de testes automatizados para storage (`vitest`)
+- [x] Documentação técnica de cenários de balanceamento (`freshwater`/`saltwater`)
+
+Próximos passos:
+- [ ] Cobrir regras críticas do `useGameLoop` com testes determinísticos
+- [ ] Implementar migrações explícitas para futuras versões de estado (`v3+`)
+- [ ] Adicionar pipeline de CI para `test + build`
+- [ ] Publicar preview animado (`.github/preview.gif`) para demonstrar fluxo completo
 
 ## Stack Tecnológica
 
@@ -90,6 +118,7 @@ Próximas evoluções recomendadas:
 ### Build e tooling
 - `@vitejs/plugin-react`
 - `@types/node`
+- `vitest`
 - Tailwind CSS via CDN em `index.html`
 
 ## Estrutura do Projeto
@@ -133,6 +162,11 @@ npm run preview
 ### Verificação de tipos
 ```bash
 npx tsc --noEmit
+```
+
+### Testes
+```bash
+npm run test
 ```
 
 ## Deploy

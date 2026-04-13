@@ -50,3 +50,19 @@ export const FISH_SPECIES: FishSpecies[] = [
   { id: 'kole_tang', name: 'Kole Tang', color: 'bg-slate-600', size: 35, maxSize: 90, environment: 'saltwater', speed: 1.5, waterQualityTolerance: saltwaterTolerance },
   { id: 'anthias', name: 'Lyretail Anthias', color: 'bg-rose-400', size: 28, maxSize: 60, environment: 'saltwater', speed: 1.4, waterQualityTolerance: saltwaterTolerance },
 ];
+
+const RIVAL_SPECIES_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['betta', 'guppy'],
+  ['oscar', 'ram_cichlid'],
+  ['oscar', 'corydoras'],
+  ['clownfish', 'flame_angel'],
+  ['yellow_tang', 'kole_tang'],
+  ['six_line_wrasse', 'firefish_goby'],
+];
+
+const rivalSpeciesSet = new Set<string>(
+  RIVAL_SPECIES_PAIRS.flatMap(([a, b]) => [`${a}:${b}`, `${b}:${a}`]),
+);
+
+export const isRivalSpecies = (speciesAId: string, speciesBId: string) =>
+  rivalSpeciesSet.has(`${speciesAId}:${speciesBId}`);
